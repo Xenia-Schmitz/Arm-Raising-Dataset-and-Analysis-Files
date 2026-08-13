@@ -1,0 +1,289 @@
+---
+title: "MuscleStatsInR"
+output: html_document
+date: "2026-07-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(lmerTest)
+library(emmeans)
+setwd('C:/Users/Action Lab/OneDrive - Northeastern University/Desktop/OneDrive - Northeastern University/Action Lab/Arm Raising/Armlifting/MATLAB/FinalFiles/SubmissionFiles')
+
+## ====================================================
+#  Age and sex stats
+# =====================================================
+sexAndAge <- read.csv('sexAndAge.txt')
+
+lm_age <- lm(AGE ~ GROUP + (1|SUBJ_NUM), sexAndAge, REML=TRUE)
+summary(lm_age)
+anova(lm_age)
+
+str(sexAndAge)
+table(sexAndAge$GROUP, sexAndAge$SEX, useNA = "ifany")
+tab <- table(sexAndAge$GROUP, sexAndAge$SEX)
+fisher.test(tab)
+
+## ====================================================
+#  Control task stats
+# =====================================================
+controlRT <- read.csv('controlRT.txt')
+
+lm_controlRT <- lmer(TRIAL_RT ~ GROUP + (1|SUBJ_NUM), controlRT, REML=TRUE)
+summary(lm_controlRT)
+anova(lm_controlRT)
+
+controlPosture <- read.csv('controlPosture.txt')
+
+lm_controlPosture1 <- lmer(SWAY ~ CONDITION + GROUP + (1+CONDITION|SUBJ_NUM), controlPosture, REML=FALSE)
+lm_controlPosture2 <- lmer(SWAY ~ CONDITION * GROUP + (1+CONDITION|SUBJ_NUM), controlPosture, REML=FALSE)
+lm_controlPosture3 <- lmer(SWAY ~ CONDITION + GROUP + (1|SUBJ_NUM), controlPosture, REML=FALSE)
+lm_controlPosture4 <- lmer(SWAY ~ CONDITION * GROUP + (1|SUBJ_NUM), controlPosture, REML=FALSE)
+
+anova(lm_controlPosture1, lm_controlPosture2, lm_controlPosture3, lm_controlPosture4)
+
+lm_controlPosture <- lmer(SWAY ~ CONDITION * GROUP + (1+CONDITION|SUBJ_NUM), controlPosture, REML=TRUE)
+summary(lm_controlPosture)
+anova(lm_controlPosture)
+
+em_PG <- emmeans(lm_controlPosture, ~GROUP | CONDITION)
+print(em_PG)
+print(pairs(em_PG, adjust='Holm'))
+
+## ====================================================
+#  Kinematics stats
+# =====================================================
+reactionTimeData <- read.csv('reactionTime_long.txt')
+lm_rt <- lmer(ReactionTime ~ Group + (1|Subject), reactionTimeData, REML=TRUE)
+summary(lm_rt)
+anova(lm_rt)
+
+em_Group <- emmeans(lm_rt, ~Group)
+print(em_Group)
+
+kinematicsResults <- read.csv('kinematicsTable.txt')
+
+lm_peakMag <- lmer(PEAK_MAG ~ GROUP + (1|SUBJ_NUM), kinematicsResults, REML=TRUE)
+summary(lm_peakMag)
+anova(lm_peakMag)
+
+lm_mt <- lmer(MT ~ GROUP + (1|SUBJ_NUM), kinematicsResults, REML=TRUE)
+summary(lm_mt)
+anova(lm_mt)
+
+em_Group <- emmeans(lm_mt, ~GROUP)
+print(em_Group)
+
+kinematicsPhases <- read.csv('kinematicsLong.txt')
+
+lm_kinPhase1 <- lmer(VALUE ~ GROUP*PHASE + (1+GROUP||SUBJ_NUM), kinematicsPhases, REML=FALSE)
+lm_kinPhase2 <- lmer(VALUE ~ GROUP+PHASE + (1+GROUP|SUBJ_NUM), kinematicsPhases, REML=FALSE)
+lm_kinPhase3 <- lmer(VALUE ~ GROUP*PHASE + (1|SUBJ_NUM), kinematicsPhases, REML=FALSE)
+lm_kinPhase4 <- lmer(VALUE ~ GROUP+PHASE + (1|SUBJ_NUM), kinematicsPhases, REML=FALSE)
+
+anova(lm_kinPhase1, lm_kinPhase2, lm_kinPhase3, lm_kinPhase4)
+anova(lm_kinPhase1, lm_kinPhase3)
+
+lm_kinPhase <- lmer(VALUE ~ GROUP*PHASE + (1|SUBJ_NUM), kinematicsPhases, REML=TRUE)
+summary(lm_kinPhase)
+anova(lm_kinPhase)
+
+em_Group <- emmeans(lm_kinPhase, ~GROUP)
+print(em_Group)
+print(pairs(em_Group))
+
+em_Phase <- emmeans(lm_kinPhase, ~PHASE)
+print(em_Phase)
+print(pairs(em_Phase, adjust='Holm'))
+
+em_PG <- emmeans(lm_kinPhase, ~GROUP | PHASE)
+print(em_PG)
+print(pairs(em_PG, adjust='Holm'))
+
+## ====================================================
+#  Entropy stats
+# =====================================================
+entropyResults <- read.csv('entropyTable.txt')
+
+lm_entropy1 <- lmer(Entropy ~ Group*Phase + (1+Phase||Subject), entropyResults, REML=FALSE)
+lm_entropy2 <- lmer(Entropy ~ Group+Phase + (1+Phase||Subject), entropyResults, REML=FALSE)
+lm_entropy3 <- lmer(Entropy ~ Group*Phase + (1|Subject), entropyResults, REML=FALSE)
+lm_entropy4 <- lmer(Entropy ~ Group+Phase + (1|Subject), entropyResults, REML=FALSE)
+
+anova(lm_entropy1, lm_entropy3, lm_entropy4)
+
+lm_entropy <- lmer(Entropy ~ Group*Phase + (1|Subject), entropyResults, REML=TRUE)
+summary(lm_entropy)
+anova(lm_entropy)
+
+em_Group <- emmeans(lm_entropy, ~Group)
+print(em_Group)
+print(pairs(em_Group))
+
+em_Phase <- emmeans(lm_entropy, ~Phase)
+print(em_Phase)
+print(pairs(em_Phase, adjust='Holm'))
+
+em_PG <- emmeans(lm_entropy, ~Group | Phase)
+print(em_PG)
+print(pairs(em_PG, adjust='Holm'))
+
+# ====================================================
+#  lme (relative to kinematic)
+# ====================================================
+
+original_trial_data_kinematic <- read.csv('longData.txt')
+lmmod <- lmer(Timing ~ GROUP * MUSCLE  + (1 |SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM)
+lmmod_random <- lmer(Timing ~ GROUP * MUSCLE  + (1 +MUSCLE||SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM)
+lmmod_reduced <- lmer(Timing ~ GROUP+MUSCLE  + (1|SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) 
+
+
+lmmod1 <- lmer(Timing ~ GROUP * MUSCLE  + (1 + MUSCLE|SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod2 <- lmer(Timing ~ GROUP + MUSCLE  + (1 + MUSCLE||SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod3 <- lmer(Timing ~ GROUP * MUSCLE  + (1 |SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod4 <- lmer(Timing ~ GROUP + MUSCLE  + (1 |SUBJ_NUM), original_trial_data_kinematic, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+anova(lmmod1,lmmod2,lmmod3,lmmod4)
+anova(lmmod1,lmmod3)
+
+
+lmmod1 <- lmer(Timing ~ GROUP * MUSCLE  + (1 + MUSCLE|SUBJ_NUM), original_trial_data_kinematic, REML=TRUE)
+summary(lmmod1)
+anova(lmmod1)
+
+em_Group <- emmeans(lmmod1, ~GROUP, lmer.df='satterthwaite')
+print(em_Group)
+print(pairs(em_Group))
+
+em_Muscle <- emmeans(lmmod1, ~MUSCLE,lmer.df='satterthwaite')
+print(em_Muscle)
+print(pairs(em_Muscle, adjust='Holm'))
+
+em_MG <- emmeans(lmmod1, ~GROUP | MUSCLE,lmer.df='satterthwaite')
+print(em_MG)
+print(pairs(em_MG, adjust='Holm'))
+
+
+# Estimate muscles within each group: Which muscles are significantly earlier or later than others within a given group?
+em_pattern <- emmeans(lmmod1, ~ MUSCLE | GROUP, lmer.df = "satterthwaite")
+summary(em_pattern)
+print(pairs(em_pattern,adjust = "holm"))
+plot(em_pattern)
+
+em <- emmeans(lmmod1, ~ GROUP * MUSCLE,
+              lmer.df = "satterthwaite")
+
+contrast(em,
+         interaction = c("pairwise", "pairwise"),
+         adjust = "holm")
+
+nt_order <- em_df |>
+  subset(GROUP == "NT") |>
+  (\(x) x[order(x$emmean), ])() |>
+  with(as.character(MUSCLE))
+
+nt_order
+
+em_df$MUSCLE <- factor(em_df$MUSCLE, levels = nt_order)
+
+library(ggplot2)
+
+ggplot(em_df,
+       aes(y = MUSCLE, x = emmean,
+           color = GROUP)) +
+  geom_point(size = 3) +
+  geom_errorbarh(aes(xmin = lower.CL,
+                     xmax = upper.CL),
+                 height = 0.15) +
+  facet_wrap(~GROUP) +
+  theme_classic() +
+  labs(y = "Muscle (NT activation order)",
+       x = "Estimated timing")
+# ====================================================
+#  lme (relative to biceps)
+# ====================================================
+original_trial_data_biceps <- read.csv('longDataToBiceps.txt')
+lmmod <- lmer(Timing ~ GROUP * MUSCLE  + (1 + MUSCLE||SUBJ_NUM), original_trial_data_biceps, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod_reduced <- lmer(Timing ~ GROUP*MUSCLE  + (1|SUBJ_NUM), original_trial_data_biceps, REML=FALSE) 
+lmmod_reduced <- lmer(Timing ~ GROUP+MUSCLE  + (1|SUBJ_NUM), original_trial_data_biceps, REML=FALSE)
+
+lmmod1 <- lmer(Timing ~ GROUP * MUSCLE  + (1 + MUSCLE||SUBJ_NUM), original_trial_data_biceps, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod2 <- lmer(Timing ~ GROUP + MUSCLE  + (1 + MUSCLE||SUBJ_NUM), original_trial_data_biceps, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod3 <- lmer(Timing ~ GROUP * MUSCLE  + (1 |SUBJ_NUM), original_trial_data_biceps, REML=TRUE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod4 <- lmer(Timing ~ GROUP + MUSCLE  + (1 |SUBJ_NUM), original_trial_data_biceps, REML=FALSE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+anova(lmmod1,lmmod2,lmmod3,lmmod4)
+anova(lmmod1,lmmod3)
+
+summary(lmmod1)
+anova(lmmod)
+anova(lmmod_reduced, lmmod)
+
+lmmod <- lmer(Timing ~ GROUP * MUSCLE  + (1 + MUSCLE||SUBJ_NUM), original_trial_data_biceps, REML=TRUE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+lmmod <- lmer(Timing ~ GROUP * MUSCLE  + (1|SUBJ_NUM), original_trial_data_biceps, REML=TRUE) #+ (1 + MUSCLE|SUBJ_NUM) + (1 | SUBJ_NUM:TRIAL)
+
+summary(lmmod)
+anova(lmmod)
+
+em_Group <- emmeans(lmmod, ~GROUP, lmer.df='satterthwaite')
+print(em_Group)
+print(pairs(em_Group))
+
+em_Muscle <- emmeans(lmmod, ~MUSCLE, lmer.df='satterthwaite')
+print(em_Muscle)
+print(pairs(em_Muscle, adjust='Holm'))
+
+em_MG <- emmeans(lmmod, ~GROUP | MUSCLE, lmer.df='satterthwaite')
+print(em_MG)
+print(pairs(em_MG, adjust='Holm'))
+
+# Estimate muscles within each group: Which muscles are significantly earlier or later than others within a given group?
+em_pattern <- emmeans(lmmod, ~ MUSCLE | GROUP, lmer.df = "satterthwaite")
+summary(em_pattern)
+pairs(em_pattern,adjust = "holm")
+plot(em_pattern)
+
+em_df <- as.data.frame(em_pattern)
+
+nt_order <- em_df |>
+  subset(GROUP == "NT") |>
+  (\(x) x[order(x$emmean), ])() |>
+  with(as.character(MUSCLE))
+
+nt_order
+
+em_df$MUSCLE <- factor(em_df$MUSCLE, levels = nt_order)
+
+library(ggplot2)
+
+ggplot(em_df,
+       aes(y = MUSCLE, x = emmean,
+           color = GROUP)) +
+  geom_point(size = 3) +
+  geom_errorbarh(aes(xmin = lower.CL,
+                     xmax = upper.CL),
+                 height = 0.15) +
+  facet_wrap(~GROUP) +
+  theme_classic() +
+  labs(y = "Muscle (NT activation order)",
+       x = "Estimated timing")
+
+# ====================================================
+#  PPCA Euclidean Distance
+# ====================================================
+euclidanDistanceData <- read.csv('eucData.txt')
+lm_euc <- lm(EUC ~ GROUP + (1|SUBJ_NUM), euclidanDistanceData, REML=TRUE)
+summary(lm_euc)
+anova(lm_euc)
+
+
+
+
+```
